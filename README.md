@@ -12,13 +12,7 @@ Requires Node.js 20+ and a Postgres database (a free [Supabase](https://supabase
 project works well — grab the connection string from **Project Settings →
 Database → Connection string → URI**).
 
-```bash
-cp .env.example .env  
-npm install && npm run prisma:migrate && npm run prisma:seed
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000), [https://coop-app1.vercel.app/](https://coop-app1.vercel.app/).
 
 > If you don't have a Postgres instance handy, `npx supabase start` after
 > installing the [Supabase CLI](https://supabase.com/docs/guides/cli) will run
@@ -39,11 +33,6 @@ includes 4 centres, 20 farmers (one suspended, `MEM-1008`), two price lists
 with different effective-from dates, and deliveries spanning every status.
 
 ## Running tests
-
-```bash
-npm test
-```
-
 Unit tests for the payment calculation module (`src/lib/payment`) run against
 no external dependencies. The API-level tests and the price-list
 effective-date test are **database-backed integration tests** — they create
@@ -53,12 +42,6 @@ To avoid running them against your dev database, copy `.env.example` to
 Supabase project's database if you don't mind test rows briefly existing —
 tests clean up after themselves in `afterAll`).
 
-```bash
-cp .env.example .env.test   
-npm run prisma:migrate      
-npm test
-```
-
 ## Deployed link
 
 Not deployed for this submission — see "Setup" above for the three-command
@@ -66,19 +49,6 @@ local run. (If you'd like me to deploy it to Vercel/Railway, I can do that as
 a follow-up.)
 
 ## Project structure
-
-```
-prisma/schema.prisma        Database schema
-prisma/seed.ts               Seed script
-src/lib/payment/             Pure payment calculation module (no DB access)
-src/lib/priceList/           Effective-date price list lookup
-src/lib/delivery/            Delivery recording + status transition services
-src/lib/auth.ts, session.ts  Auth (JWT) and server-side authorization helpers
-src/lib/validation.ts        Zod schemas for every API input
-src/app/api/                 API routes
-src/app/                     Frontend pages (App Router)
-src/components/              Shared UI components
-```
 
 ## Use of AI tools
 
