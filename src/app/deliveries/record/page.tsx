@@ -6,13 +6,32 @@ import { useAuth } from "@/lib/authContext";
 import { apiFetch, ClientApiError } from "@/lib/apiClient";
 import { Button } from "@/components/Button";
 import { PRODUCE_LABELS, formatKg, formatRwf } from "@/types";
-import type { DeliveryQuote, Farmer, ProduceType, Grade } from "@/types";
+import type { DeliveryQuote, Farmer, ProduceType, Grade, Centre } from "@/types";
 
 const PRODUCE_OPTIONS: ProduceType[] = ["COFFEE_CHERRIES", "MAIZE", "BEANS"];
 const GRADE_OPTIONS: Grade[] = ["A", "B", "C"];
 
 function RecordDeliveryForm() {
   const { user } = useAuth();
+
+  // Centre selection. Clerks are fixed to their assigned centre (centreId
+  // on their user record). Admins aren't tied to one centre, so they pick
+  // from a dropdown of all centres instead.
+  const [centres, setCentres] = useState<Centre[]>([]);
+  const [selectedCentreId, setSelectedCentreId] = useState<string>("");
+
+  useEffect(() => {
+    if (user?.role === "ADMIN") {
+      apiFetch<{ centres: Centre[] }>("/api/centres")
+        .then((d) => {
+          setCentres(d.centres);
+          if (d.centres.length > 0) setSelectedCentreId(d.centres[0]!.id);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const activeCentreId = user?.role === "CLERK" ? user.centreId : selectedCentreId;
 
   // Farmer lookup
   const [membershipNumber, setMembershipNumber] = useState("");
@@ -97,11 +116,11 @@ function RecordDeliveryForm() {
     farmer.membershipStatus === "ACTIVE" &&
     !!quote &&
     !submitting &&
-    !!user?.centreId;
+    !!activeCentreId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!farmer || !user?.centreId) return;
+    if (!farmer || !activeCentreId) return;
     setSubmitting(true);
     setSubmitError(null);
     setSuccessMessage(null);
@@ -110,7 +129,7 @@ function RecordDeliveryForm() {
         method: "POST",
         body: JSON.stringify({
           farmerId: farmer.id,
-          centreId: user.centreId,
+          centreId: activeCentreId,
           produceType,
           grade,
           grossWeightKg: Number(grossWeightKg),
@@ -132,7 +151,10 @@ function RecordDeliveryForm() {
     }
   }
 
-  if (!user?.centreId) {
+  // Only clerks are hard-blocked here — an unassigned clerk genuinely has no
+  // centre to record at. Admins without a selection yet just haven't picked
+  // one (see the dropdown below), which isn't an error state.
+  if (user?.role === "CLERK" && !user.centreId) {
     return (
       <div className="rounded-lg border border-status-rejected/30 bg-red-50 p-4 text-status-rejected">
         Your account isn't assigned to a collection centre, so you can't record deliveries. Ask an
@@ -143,7 +165,23 @@ function RecordDeliveryForm() {
 
   return (
     <div className="flex flex-col gap-6 pb-24 sm:pb-6">
-      <h1 className="text-lg font-bold text-primary-700">Record a delivery</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-lg font-bold text-primary-700">Record a delivery</h1>
+        {user?.role === "ADMIN" && (
+          <select
+            value={selectedCentreId}
+            onChange={(e) => setSelectedCentreId(e.target.value)}
+            className="min-h-[40px] rounded-md border border-line px-2 text-sm"
+            aria-label="Select centre"
+          >
+            {centres.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {/* Farmer lookup */}
       <section className="rounded-lg border border-line bg-white p-4">
