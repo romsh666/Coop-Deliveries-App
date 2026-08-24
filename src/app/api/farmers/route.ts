@@ -29,11 +29,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Looks up farmers, primarily for the clerk's "look up a farmer by
- * membership number" flow on the record-delivery screen. Also supports a
- * loose name search for the admin farmer list.
- */
+
 export async function GET(req: NextRequest) {
   try {
     await requireSession(); // any authenticated role may look up a farmer

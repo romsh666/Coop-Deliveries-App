@@ -1,25 +1,7 @@
-// ============================================================================
+
 // Prisma schema — Agricultural Cooperative Delivery & Payment System
-//
-// Design notes (see NOTES.md for the full write-up):
-// - Money is stored as Int (whole RWF), per the brief.
-// - Weight is stored as Decimal(10,3) (kg, up to 3 decimal places / gram
-//   precision) — NOT Float. Clarified with the person giving this
-//   assessment: the brief's "store weights as integers" line and the
-//   worked example using fractional kg (45.5kg / 2.5kg) were in tension;
-//   confirmed decimal weights are fine. Decimal (Postgres `numeric`) still
-//   satisfies "never use floating-point numbers for weight" — numeric types
-//   are exact, unlike float/double, so there's no representation drift.
-// - Price lists are never mutated or deleted once published. A delivery
-//   stores a hard foreign key (priceListId) to the exact price list row it
-//   was priced against, so republishing a price list can never retroactively
-//   change what a past delivery is worth.
-// - CentreStock is a materialized running total per (centre, produceType),
-//   updated transactionally alongside delivery status changes, guarded by a
-//   DB-level check constraint + row locking (see delivery service) rather than
-//   recomputed by scanning all deliveries on every read.
-// - AuditLog is append-only and captures every status transition.
-// ============================================================================
+
+
 
 generator client {
   provider = "prisma-client-js"
@@ -30,9 +12,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
+
 // Enums
-// ---------------------------------------------------------------------------
+
 
 enum Role {
   CLERK
@@ -64,9 +46,9 @@ enum DeliveryStatus {
   REJECTED
 }
 
-// ---------------------------------------------------------------------------
+
 // Users & auth
-// ---------------------------------------------------------------------------
+
 
 model User {
   id           String   @id @default(uuid())
@@ -88,9 +70,9 @@ model User {
   @@index([centreId])
 }
 
-// ---------------------------------------------------------------------------
+
 // Centres & capacity
-// ---------------------------------------------------------------------------
+
 
 model Centre {
   id        String   @id @default(uuid())
@@ -131,9 +113,9 @@ model CentreStock {
   @@unique([centreId, produceType])
 }
 
-// ---------------------------------------------------------------------------
+
 // Farmers
-// ---------------------------------------------------------------------------
+
 
 model Farmer {
   id               String           @id @default(uuid())
@@ -149,9 +131,9 @@ model Farmer {
   @@index([membershipStatus])
 }
 
-// ---------------------------------------------------------------------------
+
 // Price lists
-// ---------------------------------------------------------------------------
+
 
 // A PriceList is a named, dated publication event. It groups a set of
 // PriceListEntry rows (one per produceType x grade) that all share the same
@@ -180,9 +162,9 @@ model PriceListEntry {
   @@unique([priceListId, produceType, grade])
 }
 
-// ---------------------------------------------------------------------------
+
 // Deliveries
-// ---------------------------------------------------------------------------
+
 
 model Delivery {
   id            String         @id @default(uuid())
@@ -227,9 +209,9 @@ model Delivery {
   @@index([centreId, status])
 }
 
-// ---------------------------------------------------------------------------
+
 // Audit log — append-only record of every status transition
-// ---------------------------------------------------------------------------
+
 
 model AuditLogEntry {
   id           String         @id @default(uuid())

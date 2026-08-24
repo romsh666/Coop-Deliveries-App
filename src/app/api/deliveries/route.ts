@@ -9,7 +9,7 @@ import { recordDelivery } from "@/lib/delivery/recordDelivery";
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();
-    requireRole(session, "CLERK", "ADMIN"); // admins can record too; managers do not record deliveries
+    requireRole(session, "CLERK", "ADMIN"); // admins can record too, managers can not record deliveries
 
     const body = await req.json();
     const parsed = recordDeliverySchema.safeParse(body);
@@ -19,8 +19,7 @@ export async function POST(req: NextRequest) {
     const { farmerId, centreId, produceType, grade, grossWeightKg, tareWeightKg, deliveryDate } =
       parsed.data;
 
-    // Server-side enforcement, not just a hidden UI control: a clerk may
-    // only record at their own assigned centre.
+    
     requireOwnCentre(session, centreId);
 
     const delivery = await recordDelivery({
@@ -51,9 +50,7 @@ export async function GET(req: NextRequest) {
     }
     const { centreId, farmerId, produceType, status, dateFrom, dateTo, page, pageSize } = parsed.data;
 
-    // Role-based scoping happens here, server-side, regardless of what the
-    // client asked for — a clerk cannot widen their own scope by omitting
-    // centreId or passing a different one.
+   
     const where: Prisma.DeliveryWhereInput = {};
     if (session.role === "CLERK") {
       where.centreId = session.centreId ?? "__no_centre_assigned__";

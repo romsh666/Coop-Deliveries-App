@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 
-/**
- * Every business-rule failure in this app returns one of these codes so the
- * frontend (and API tests) can branch on `error.code` rather than parsing
- * message strings. New codes should be added here, not invented inline.
- */
+
 export type ApiErrorCode =
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
@@ -35,8 +31,7 @@ export class ApiError extends Error {
   }
 }
 
-// Central mapping so every ApiError gets a sensible default HTTP status
-// without callers having to remember one everywhere they throw.
+
 const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   UNAUTHENTICATED: 401,
   FORBIDDEN: 403,
@@ -66,9 +61,7 @@ export function errorResponse(error: unknown): NextResponse {
       { status: error.status }
     );
   }
-  // Anything unexpected is a genuine 500 — but the brief only requires
-  // business-rule failures to avoid 500s, so an unhandled exception here is
-  // legitimately a bug we want logged and visible, not swallowed.
+  
   console.error("Unhandled API error:", error);
   return NextResponse.json(
     { error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred." } },

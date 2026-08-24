@@ -11,8 +11,7 @@ body {
   color: #1c2321;
 }
 
-/* Visible keyboard focus everywhere — required for the "keyboard-usable
-   forms" requirement, and just good practice on a form-heavy tool. */
+
 :focus-visible {
   outline: 2px solid #1f4d3a;
   outline-offset: 2px;
@@ -26,10 +25,7 @@ body {
   }
 }
 
-/* Ticket-style numeric display used for weights and money throughout —
-   the signature element: every screen renders figures the way a printed
-   weigh-slip would, monospaced and slightly spaced, so a clerk can read a
-   number correctly at a glance under field conditions. */
+
 .ticket-figure {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

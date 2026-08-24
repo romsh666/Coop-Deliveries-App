@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { calculatePayment, type PriceListEntryInput } from "../calculatePayment";
 
-// Mirrors the "current price list, effective 21 August" table in the brief.
+
 const AUGUST_PRICE_LIST: PriceListEntryInput[] = [
   { produceType: "COFFEE_CHERRIES", grade: "A", pricePerKgRwf: 650 },
   { produceType: "COFFEE_CHERRIES", grade: "B", pricePerKgRwf: 500 },
@@ -14,7 +14,7 @@ const AUGUST_PRICE_LIST: PriceListEntryInput[] = [
   { produceType: "BEANS", grade: "C", pricePerKgRwf: 600 },
 ];
 
-// A price list with no BEANS entries, used for the "no price for grade" case.
+
 const MAIZE_ONLY_PRICE_LIST: PriceListEntryInput[] = [
   { produceType: "MAIZE", grade: "A", pricePerKgRwf: 450 },
 ];
@@ -68,10 +68,10 @@ describe("calculatePayment — worked examples from the brief", () => {
   });
 
   it("Beans, Grade A, delivered 10 March (priced with the list effective then) -> 900/kg", () => {
-    // This module doesn't pick the price list itself (that's the caller's
-    // job — see priceList/getEffectivePriceList.ts) but it must apply
-    // whichever entries it's handed, proving the calculation is agnostic
-    // to "today's" price and only depends on what price list is passed in.
+    
+    
+    
+    
     const JANUARY_LIST: PriceListEntryInput[] = [
       { produceType: "BEANS", grade: "A", pricePerKgRwf: 900 },
     ];
@@ -111,9 +111,9 @@ describe("calculatePayment — edge cases", () => {
   });
 
   it("preserves a fractional net weight exactly, to gram precision", () => {
-    // 20.7kg - 10.3kg = 10.4kg net. Decimal weights are accepted (confirmed
-    // with the assessment's author — see NOTES.md), so this is NOT rounded
-    // to a whole kg; both the weight and the derived amount must be exact.
+    
+    
+    
     const result = calculatePayment(
       { produceType: "MAIZE", grade: "A", grossWeightKg: 20.7, tareWeightKg: 10.3 },
       AUGUST_PRICE_LIST
@@ -121,12 +121,12 @@ describe("calculatePayment — edge cases", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.netWeightKg).toBe(10.4);
-      expect(result.amountRwf).toBe(4_680); // 10.4 * 450, exact
+      expect(result.amountRwf).toBe(4_680); 
     }
   });
 
   it("computes an exact amount for a net weight with 3 decimal places (gram precision)", () => {
-    // 15.234kg - 5.001kg = 10.233kg net.
+    
     const result = calculatePayment(
       { produceType: "MAIZE", grade: "A", grossWeightKg: 15.234, tareWeightKg: 5.001 },
       AUGUST_PRICE_LIST
@@ -134,13 +134,13 @@ describe("calculatePayment — edge cases", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.netWeightKg).toBeCloseTo(10.233, 3);
-      // 10233 grams * 450 / 1000 = 4604.85 -> rounds to 4605
+    
       expect(result.amountRwf).toBe(4_605);
     }
   });
 
   it("rejects a net weight that is a tiny positive fraction of a gram (rounds to zero grams)", () => {
-    // Sub-gram difference rounds to 0 grams once converted to integer grams.
+    
     const result = calculatePayment(
       { produceType: "MAIZE", grade: "A", grossWeightKg: 10.0001, tareWeightKg: 10.0000 },
       AUGUST_PRICE_LIST

@@ -5,13 +5,7 @@ import { errorResponse, apiError } from "@/lib/apiError";
 import { transitionDeliverySchema } from "@/lib/validation";
 import { transitionDelivery } from "@/lib/delivery/transitionDelivery";
 
-/**
- * Shared implementation behind the verify/reject/pay routes — they differ
- * only in the target status, and all the real rule enforcement (role,
- * ownership, comment-on-reject, atomic transition) lives in
- * transitionDelivery(), which is exercised identically regardless of which
- * of these three thin routes called it.
- */
+
 export async function handleTransition(
   req: NextRequest,
   deliveryId: string,

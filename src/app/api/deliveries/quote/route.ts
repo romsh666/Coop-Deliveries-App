@@ -5,16 +5,10 @@ import { quoteDeliverySchema } from "@/lib/validation";
 import { calculatePayment } from "@/lib/payment/calculatePayment";
 import { getEffectivePriceList } from "@/lib/priceList/getEffectivePriceList";
 
-/**
- * Calculates net weight and payment WITHOUT saving anything, so a clerk can
- * show the farmer the figure before confirming. Does not check farmer
- * suspension or centre capacity — those are recording-time rules, not
- * pricing rules — but does require a real user session so this can't be
- * used to probe price lists anonymously.
- */
+
 export async function POST(req: NextRequest) {
   try {
-    await requireSession(); // any authenticated role may quote
+    await requireSession(); 
 
     const body = await req.json();
     const parsed = quoteDeliverySchema.safeParse(body);

@@ -18,7 +18,7 @@ export default function HomePage() {
     } else {
       router.replace("/verification");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [loading, user]);
 
   return <LoadingState />;

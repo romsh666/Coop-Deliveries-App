@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
     const { email, password } = parsed.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
-    // Deliberately identical error for "no such user" and "wrong password"
-    // so the endpoint doesn't leak which emails are registered.
+    
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       throw apiError("UNAUTHENTICATED", "Invalid email or password.");
     }
@@ -33,7 +32,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 12, // 12h, matches TOKEN_TTL in auth.ts
+      maxAge: 60 * 60 * 12, 
     });
 
     return NextResponse.json({

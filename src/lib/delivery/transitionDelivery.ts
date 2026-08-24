@@ -4,7 +4,7 @@ import { apiError } from "../apiError";
 import type { SessionPayload } from "../auth";
 import { requireRole, requireOwnCentre } from "../session";
 
-// The only transitions the state machine permits, keyed by current status.
+
 const ALLOWED_TRANSITIONS: Record<DeliveryStatus, DeliveryStatus[]> = {
   RECORDED: ["VERIFIED", "REJECTED"],
   VERIFIED: ["PAID", "REJECTED"],
@@ -19,23 +19,7 @@ interface TransitionOptions {
   comment: string | null;
 }
 
-/**
- * Applies a status transition to a delivery, enforcing:
- * - the allowed-transition state machine
- * - "a clerk cannot verify their own entry"
- * - "comment required on rejection"
- * - atomic, race-safe transition so the same delivery can never be paid
- *   twice (or verified twice) even if two requests land at the same instant
- *
- * Concurrency safety: the actual status flip is a single conditional UPDATE
- * (`WHERE status = <expected current status>`), the same pattern used for
- * centre capacity in recordDelivery.ts. If a duplicate "pay" click fires a
- * second request before the first commits, the second UPDATE's WHERE clause
- * no longer matches (status is already PAID) and 0 rows are affected — we
- * detect that and return a clean INVALID_STATUS_TRANSITION error instead of
- * paying twice. This is enforced at the database level, not by an
- * application-level read-then-write check.
- */
+
 export async function transitionDelivery({
   deliveryId,
   targetStatus,
@@ -60,7 +44,7 @@ export async function transitionDelivery({
       );
     }
 
-    // Role + ownership rules per action.
+    
     if (targetStatus === "VERIFIED") {
       requireRole(session, "MANAGER", "ADMIN");
       if (delivery.recordedById === session.userId) {
@@ -76,7 +60,7 @@ export async function transitionDelivery({
     }
     requireOwnCentre(session, delivery.centreId);
 
-    // Atomic conditional transition — see docstring.
+    
     const result = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       UPDATE "Delivery"
       SET "status" = ${targetStatus}::"DeliveryStatus", "updatedAt" = now()
@@ -85,8 +69,8 @@ export async function transitionDelivery({
     `);
 
     if (result.length === 0) {
-      // Someone else changed the status between our read and our write
-      // (e.g. a double-click race). Fail cleanly rather than double-apply.
+      
+      
       throw apiError(
         "INVALID_STATUS_TRANSITION",
         "This delivery's status changed before this action could complete. Refresh and try again."

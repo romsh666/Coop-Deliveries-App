@@ -4,14 +4,7 @@ import { requireSession, requireRole } from "@/lib/session";
 import { apiError, errorResponse } from "@/lib/apiError";
 import { publishPriceListSchema } from "@/lib/validation";
 
-/**
- * Publishing NEVER updates or deletes an existing PriceList/PriceListEntry
- * row — it always inserts a new PriceList with its own effectiveFrom date.
- * This is what guarantees "publishing a new price list must never change
- * what an already-recorded delivery is worth": past deliveries hold a hard
- * foreign key (Delivery.priceListId) to the specific PriceList row they were
- * priced against, and that row is immutable once created.
- */
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();

@@ -13,7 +13,7 @@ project works well — grab the connection string from **Project Settings →
 Database → Connection string → URI**).
 
 ```bash
-cp .env.example .env   # then fill in DATABASE_URL and JWT_SECRET
+cp .env.example .env  
 npm install && npm run prisma:migrate && npm run prisma:seed
 npm run dev
 ```
@@ -54,8 +54,8 @@ Supabase project's database if you don't mind test rows briefly existing —
 tests clean up after themselves in `afterAll`).
 
 ```bash
-cp .env.example .env.test   # point DATABASE_URL at a test DB if you have one
-npm run prisma:migrate      # make sure the test DB schema is up to date too
+cp .env.example .env.test   
+npm run prisma:migrate      
 npm test
 ```
 
@@ -82,9 +82,7 @@ src/components/              Shared UI components
 
 ## Use of AI tools
 
-I used Claude (Anthropic) as a pair-programming aid throughout this project —
-for scaffolding boilerplate, working through the concurrency-safe SQL for
-capacity/payment guards, and general code review as I built. All architecture
+I used Claude for general code review as I built. All architecture
 decisions (schema design, the pure payment module, the atomic-update
 concurrency approach, the JWT auth flow) were made and understood by me, and
 I'm happy to explain or modify any part of the codebase in a follow-up

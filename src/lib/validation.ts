@@ -15,7 +15,7 @@ export const recordDeliverySchema = z.object({
   grade: gradeSchema,
   grossWeightKg: z.number().positive().max(100_000),
   tareWeightKg: z.number().nonnegative().max(100_000),
-  // ISO date string, e.g. "2026-08-21". Defaults to today if omitted.
+  
   deliveryDate: z.string().date().optional(),
 });
 

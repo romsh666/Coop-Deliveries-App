@@ -58,12 +58,12 @@ export const STATUS_LABELS: Record<DeliveryStatus, string> = {
   REJECTED: "Rejected",
 };
 
-/** Formats an RWF amount with thousands separators, no decimals (whole RWF). */
+
 export function formatRwf(amount: number): string {
   return new Intl.NumberFormat("en-RW", { maximumFractionDigits: 0 }).format(amount) + " RWF";
 }
 
-/** Formats a kg weight (possibly a Decimal-as-string from the API) to 3dp max, trimmed. */
+
 export function formatKg(weight: string | number): string {
   const n = typeof weight === "string" ? Number(weight) : weight;
   return `${n.toFixed(n % 1 === 0 ? 0 : 3)} kg`;

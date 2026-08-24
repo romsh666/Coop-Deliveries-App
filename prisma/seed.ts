@@ -1,14 +1,3 @@
-/**
- * Seeds the database with:
- * - 4 collection centres, each with capacity configured for all 3 produce types
- * - 3 login accounts: one clerk (assigned to Kigali centre), one manager, one admin
- * - 20 farmers, including one suspended
- * - Two price lists with different effective-from dates (the August list from
- *   the brief, plus an earlier one so the effective-date rule is visible)
- * - A spread of deliveries across RECORDED, VERIFIED, PAID, and REJECTED
- *
- * Run with: npm run prisma:seed
- */
 import { PrismaClient, ProduceType, Grade } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth";
 import { calculatePayment } from "../src/lib/payment/calculatePayment";
@@ -21,7 +10,7 @@ const GRADES: Grade[] = ["A", "B", "C"];
 async function main() {
   console.log("Seeding database...");
 
-  // --- Centres --------------------------------------------------------
+  
   const centreDefs = [
     { name: "Kigali Collection Centre", location: "Kigali" },
     { name: "Huye Collection Centre", location: "Huye" },
@@ -43,9 +32,12 @@ async function main() {
   }
   const [kigali, huye, musanze, rubavu] = centres;
 
-  // --- Users ------------------------------------------------------------
+  
   const passwordHash = await hashPassword("Password123!");
-
+  
+  if (!kigali) {
+  throw new Error("Cannot create user: Kigali centre was not found.");
+}
   const clerk = await prisma.user.create({
     data: {
       email: "clerk@coop.rw",
@@ -72,9 +64,9 @@ async function main() {
     },
   });
 
-  // --- Price lists --------------------------------------------------------
-  // An earlier list, so a delivery dated before August is priced differently
-  // from one dated after — makes the effective-date rule visible in seed data.
+  
+  
+  
   const januaryList = await prisma.priceList.create({
     data: {
       effectiveFrom: new Date("2026-01-01"),
@@ -143,11 +135,7 @@ async function main() {
     farmers.push(farmer);
   }
 
-  // --- Deliveries across every status --------------------------------
-  // Helper: price a delivery against a given price list's entries and
-  // insert it directly at a target status, writing the matching audit
-  // trail — deliveries.status is a straight seed field here since we're
-  // constructing fixture history, not exercising the transition service.
+  
   async function seedDelivery(opts: {
     farmerId: string;
     centreId: string;
@@ -278,22 +266,21 @@ async function main() {
 
   // A few more spread across the other centres for a fuller dashboard.
   await seedDelivery({
-    farmerId: farmers[5]!.id, centreId: huye.id, produceType: "COFFEE_CHERRIES", grade: "B",
+    farmerId: farmers[5]!.id, centreId: huye!.id, produceType: "COFFEE_CHERRIES", grade: "B",
     grossWeightKg: 90, tareWeightKg: 6, deliveryDate: new Date("2026-08-22"),
     priceList: augustList, status: "RECORDED", recordedById: clerk.id,
   });
   await seedDelivery({
-    farmerId: farmers[6]!.id, centreId: musanze.id, produceType: "MAIZE", grade: "C",
+    farmerId: farmers[6]!.id, centreId: musanze!.id, produceType: "MAIZE", grade: "C",
     grossWeightKg: 150, tareWeightKg: 12, deliveryDate: new Date("2026-08-21"),
     priceList: augustList, status: "VERIFIED", recordedById: clerk.id, verifiedById: manager.id,
   });
   await seedDelivery({
-    farmerId: farmers[8]!.id, centreId: rubavu.id, produceType: "BEANS", grade: "B",
+    farmerId: farmers[8]!.id, centreId: rubavu!.id, produceType: "BEANS", grade: "B",
     grossWeightKg: 60, tareWeightKg: 4, deliveryDate: new Date("2026-08-20"),
     priceList: augustList, status: "PAID", recordedById: clerk.id, verifiedById: manager.id,
   });
-  // Fractional-weight delivery, matching the brief's own worked example
-  // (45.5kg / 2.5kg), to demonstrate decimal weight support end to end.
+  
   await seedDelivery({
     farmerId: farmers[9]!.id, centreId: kigali.id, produceType: "BEANS", grade: "C",
     grossWeightKg: 45.5, tareWeightKg: 2.5, deliveryDate: new Date("2026-08-22"),

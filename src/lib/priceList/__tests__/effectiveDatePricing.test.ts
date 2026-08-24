@@ -1,17 +1,3 @@
-/**
- * Proves the core pricing-over-time rule from the brief: "A delivery must
- * be paid at the price that was in effect on the delivery date, not the
- * price in effect today. Publishing a new price list must never change
- * what an already-recorded delivery is worth."
- *
- * This is a database-backed test (not a pure unit test) because the rule
- * is enforced by a real lookup against persisted PriceList rows, and because
- * the second half of the test (recording, then publishing a newer list, then
- * re-reading) is precisely the scenario a pure function can't demonstrate on
- * its own — it depends on what's actually stored.
- *
- * Requires a real Postgres database — see README.md "Running tests".
- */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
@@ -89,7 +75,7 @@ describe("Pricing is locked to the price list effective on the delivery date", (
     expect(marchDelivery.pricePerKgRwf).toBe(900);
     expect(marchDelivery.amountRwf).toBe(90_000);
 
-    // Now publish a new list effective 1 April at a different rate.
+    
     await prisma.priceList.create({
       data: {
         effectiveFrom: new Date("2026-04-01"),
@@ -98,19 +84,16 @@ describe("Pricing is locked to the price list effective on the delivery date", (
       },
     });
 
-    // Re-fetch the March delivery from the database — its stored price must
-    // be untouched by the new publication.
+    
     const reloaded = await prisma.delivery.findUniqueOrThrow({ where: { id: marchDelivery.id } });
     expect(reloaded.pricePerKgRwf).toBe(900);
     expect(reloaded.amountRwf).toBe(90_000);
 
-    // And a NEW delivery dated after 1 April correctly picks up the new rate.
+    
     const { entry: aprilEntry } = await getEffectivePriceList(new Date("2026-04-15"), "BEANS", "A");
     expect(aprilEntry.pricePerKgRwf).toBe(1_100);
 
-    // While a delivery dated before 1 April, looked up again after the new
-    // list exists, still resolves to the January rate — proving the lookup
-    // itself (not just the stored row) is date-correct, not "always latest".
+    
     const { entry: marchEntryAfterRepublish } = await getEffectivePriceList(
       new Date("2026-03-10"),
       "BEANS",

@@ -10,7 +10,7 @@ function startOfDay(d: Date): Date {
 }
 
 function startOfWeek(d: Date): Date {
-  // Monday-start week.
+  
   const copy = startOfDay(d);
   const day = copy.getDay(); // 0 = Sunday
   const diff = (day === 0 ? -6 : 1) - day;

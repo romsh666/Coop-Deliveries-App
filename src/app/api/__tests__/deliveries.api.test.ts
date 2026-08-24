@@ -1,27 +1,9 @@
-/**
- * API-level tests for the four rejected paths required by the brief:
- *   1. Zero net weight is rejected by the record-delivery endpoint.
- *   2. A suspended farmer is rejected by the record-delivery endpoint.
- *   3. A clerk calling the verify endpoint directly gets 403, even with a
- *      valid token (proves authorization is enforced server-side, not just
- *      hidden in the UI).
- *   4. A clerk requesting another centre's deliveries does not receive them.
- *
- * These call the actual exported route handlers (POST/GET from route.ts),
- * not just the service layer underneath them, so they exercise real
- * request parsing, session verification, and error-response shaping.
- *
- * Requires a real Postgres database migrated with the Prisma schema —
- * point DATABASE_URL (and JWT_SECRET) at a disposable test database before
- * running. See README.md "Running tests".
- */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, signSession } from "@/lib/auth";
 
-// next/headers' cookies() only works inside a real Next.js request context.
-// We stub it so route handlers can read a session cookie during tests.
+
 let currentCookieValue: string | undefined;
 vi.mock("next/headers", () => ({
   cookies: () => ({
@@ -32,7 +14,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-// Imported AFTER the mock above so the handlers pick up the mocked cookies().
+
 const { POST: recordDeliveryHandler, GET: listDeliveriesHandler } = await import(
   "../deliveries/route"
 );
@@ -102,7 +84,7 @@ describe("Delivery API — rejected paths", () => {
   });
 
   afterAll(async () => {
-    // Clean up everything created in this suite, respecting FK order.
+    
     await prisma.auditLogEntry.deleteMany({ where: { performedById: { in: [clerkA.id, clerkB.id] } } });
     await prisma.delivery.deleteMany({ where: { centreId: { in: [centreA.id, centreB.id] } } });
     await prisma.priceListEntry.deleteMany({});
@@ -162,8 +144,7 @@ describe("Delivery API — rejected paths", () => {
   });
 
   it("returns 403 when a clerk calls the verify endpoint directly", async () => {
-    // Record a real delivery first (as clerkA), then have clerkA try to
-    // verify it directly via HTTP, bypassing any UI restriction.
+    
     await loginAs(clerkA.id, clerkA.email, "CLERK", centreA.id);
     const recordReq = new NextRequest("http://localhost/api/deliveries", {
       method: "POST",
@@ -194,8 +175,7 @@ describe("Delivery API — rejected paths", () => {
   });
 
   it("does not return another centre's deliveries to a clerk", async () => {
-    // A delivery exists at Centre A (recorded above). Clerk B, assigned to
-    // Centre B, must not see it — even if they explicitly ask for centreId=A.
+    
     await loginAs(clerkB.id, clerkB.email, "CLERK", centreB.id);
 
     const listReq = new NextRequest(
@@ -206,9 +186,7 @@ describe("Delivery API — rejected paths", () => {
     const listJson = await listRes.json();
 
     expect(listRes.status).toBe(200);
-    // Every returned delivery (if any) must belong to Centre B, never A —
-    // the server ignores the requested centreId and scopes by the clerk's
-    // own assigned centre.
+   
     for (const d of listJson.deliveries) {
       expect(d.centreId).toBe(centreB.id);
     }

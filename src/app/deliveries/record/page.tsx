@@ -14,9 +14,7 @@ const GRADE_OPTIONS: Grade[] = ["A", "B", "C"];
 function RecordDeliveryForm() {
   const { user } = useAuth();
 
-  // Centre selection. Clerks are fixed to their assigned centre (centreId
-  // on their user record). Admins aren't tied to one centre, so they pick
-  // from a dropdown of all centres instead.
+  
   const [centres, setCentres] = useState<Centre[]>([]);
   const [selectedCentreId, setSelectedCentreId] = useState<string>("");
 
@@ -33,24 +31,24 @@ function RecordDeliveryForm() {
 
   const activeCentreId = user?.role === "CLERK" ? user.centreId : selectedCentreId;
 
-  // Farmer lookup
+  
   const [membershipNumber, setMembershipNumber] = useState("");
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [farmerLookupError, setFarmerLookupError] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
 
-  // Delivery fields
+  
   const [produceType, setProduceType] = useState<ProduceType>("MAIZE");
   const [grade, setGrade] = useState<Grade>("A");
   const [grossWeightKg, setGrossWeightKg] = useState("");
   const [tareWeightKg, setTareWeightKg] = useState("");
 
-  // Live quote
+  
   const [quote, setQuote] = useState<DeliveryQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoting, setQuoting] = useState(false);
 
-  // Submission
+  
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -75,7 +73,7 @@ function RecordDeliveryForm() {
     }
   }
 
-  // Live calculation as the clerk types.
+  
   useEffect(() => {
     const gross = Number(grossWeightKg);
     const tare = Number(tareWeightKg);
@@ -103,7 +101,7 @@ function RecordDeliveryForm() {
       } finally {
         setQuoting(false);
       }
-    }, 350); // debounce while typing
+    }, 350); 
 
     return () => {
       clearTimeout(timer);
@@ -137,8 +135,8 @@ function RecordDeliveryForm() {
         }),
       });
       setSuccessMessage(`Delivery recorded for ${farmer.name}.`);
-      // Reset weight fields for the next delivery; keep farmer selected in
-      // case the same farmer is delivering multiple lots today.
+      
+      
       setGrossWeightKg("");
       setTareWeightKg("");
       setQuote(null);
@@ -151,9 +149,9 @@ function RecordDeliveryForm() {
     }
   }
 
-  // Only clerks are hard-blocked here — an unassigned clerk genuinely has no
-  // centre to record at. Admins without a selection yet just haven't picked
-  // one (see the dropdown below), which isn't an error state.
+  
+  
+  
   if (user?.role === "CLERK" && !user.centreId) {
     return (
       <div className="rounded-lg border border-status-rejected/30 bg-red-50 p-4 text-status-rejected">
