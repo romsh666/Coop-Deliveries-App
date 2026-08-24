@@ -87,3 +87,8 @@ double-clicked "pay" button can never pay a delivery twice.
   only validates weight and pricing, since its purpose is showing a figure
   before farmer/centre are necessarily confirmed. Those checks still run at
   actual record time.
+- **Supabase pooler needs `pgbouncer=true`**: Supabase's connection pooler
+  (port 6543) runs PgBouncer in transaction mode, which doesn't support
+  Prisma's default prepared-statement usage — without `?pgbouncer=true` on
+  `DATABASE_URL`, some queries hang instead of failing fast. Documented in
+  `.env.example`.
