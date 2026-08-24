@@ -1,0 +1,249 @@
+// ============================================================================
+// Prisma schema — Agricultural Cooperative Delivery & Payment System
+//
+// Design notes (see NOTES.md for the full write-up):
+// - Money is stored as Int (whole RWF), per the brief.
+// - Weight is stored as Decimal(10,3) (kg, up to 3 decimal places / gram
+//   precision) — NOT Float. Clarified with the person giving this
+//   assessment: the brief's "store weights as integers" line and the
+//   worked example using fractional kg (45.5kg / 2.5kg) were in tension;
+//   confirmed decimal weights are fine. Decimal (Postgres `numeric`) still
+//   satisfies "never use floating-point numbers for weight" — numeric types
+//   are exact, unlike float/double, so there's no representation drift.
+// - Price lists are never mutated or deleted once published. A delivery
+//   stores a hard foreign key (priceListId) to the exact price list row it
+//   was priced against, so republishing a price list can never retroactively
+//   change what a past delivery is worth.
+// - CentreStock is a materialized running total per (centre, produceType),
+//   updated transactionally alongside delivery status changes, guarded by a
+//   DB-level check constraint + row locking (see delivery service) rather than
+//   recomputed by scanning all deliveries on every read.
+// - AuditLog is append-only and captures every status transition.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CLERK
+  MANAGER
+  ADMIN
+}
+
+enum ProduceType {
+  COFFEE_CHERRIES
+  MAIZE
+  BEANS
+}
+
+enum Grade {
+  A
+  B
+  C
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DeliveryStatus {
+  RECORDED
+  VERIFIED
+  PAID
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Users & auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  // Only meaningful for CLERK — the single centre they may record deliveries at.
+  // Nullable because MANAGER/ADMIN are not restricted to one centre.
+  centreId     String?
+  centre       Centre?  @relation(fields: [centreId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deliveriesRecorded Delivery[]      @relation("RecordedBy")
+  auditEntries       AuditLogEntry[] @relation("PerformedBy")
+  priceListsPublished PriceList[]
+
+  @@index([centreId])
+}
+
+// ---------------------------------------------------------------------------
+// Centres & capacity
+// ---------------------------------------------------------------------------
+
+model Centre {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  location  String
+  createdAt DateTime @default(now())
+
+  users      User[]
+  deliveries Delivery[]
+  capacities CentreCapacity[]
+  stock      CentreStock[]
+}
+
+// Storage capacity per produce type at a given centre (kg). Whole kg is fine
+// here — capacity is a configured ceiling, not a measured weight.
+model CentreCapacity {
+  id           String      @id @default(uuid())
+  centreId     String
+  centre       Centre      @relation(fields: [centreId], references: [id])
+  produceType  ProduceType
+  capacityKg   Int
+
+  @@unique([centreId, produceType])
+}
+
+// Running stock total per (centre, produceType). Decimal because it
+// accumulates fractional netWeightKg deliveries. Updated inside the same
+// transaction as delivery inserts/status changes so it never drifts, and
+// read-with-lock at write time to enforce capacity under concurrency
+// (see src/lib/delivery/recordDelivery.ts).
+model CentreStock {
+  id          String      @id @default(uuid())
+  centreId    String
+  centre      Centre      @relation(fields: [centreId], references: [id])
+  produceType ProduceType
+  quantityKg  Decimal     @default(0) @db.Decimal(12, 3)
+
+  @@unique([centreId, produceType])
+}
+
+// ---------------------------------------------------------------------------
+// Farmers
+// ---------------------------------------------------------------------------
+
+model Farmer {
+  id               String           @id @default(uuid())
+  membershipNumber String           @unique
+  name             String
+  phone            String?
+  membershipStatus MembershipStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  deliveries Delivery[]
+
+  @@index([membershipStatus])
+}
+
+// ---------------------------------------------------------------------------
+// Price lists
+// ---------------------------------------------------------------------------
+
+// A PriceList is a named, dated publication event. It groups a set of
+// PriceListEntry rows (one per produceType x grade) that all share the same
+// effectiveFrom date. Publishing a new list never touches old rows.
+model PriceList {
+  id            String    @id @default(uuid())
+  effectiveFrom DateTime  @db.Date
+  publishedById String
+  publishedBy   User      @relation(fields: [publishedById], references: [id])
+  createdAt     DateTime  @default(now())
+
+  entries    PriceListEntry[]
+  deliveries Delivery[]
+
+  @@index([effectiveFrom])
+}
+
+model PriceListEntry {
+  id             String      @id @default(uuid())
+  priceListId    String
+  priceList      PriceList   @relation(fields: [priceListId], references: [id])
+  produceType    ProduceType
+  grade          Grade
+  pricePerKgRwf  Int
+
+  @@unique([priceListId, produceType, grade])
+}
+
+// ---------------------------------------------------------------------------
+// Deliveries
+// ---------------------------------------------------------------------------
+
+model Delivery {
+  id            String         @id @default(uuid())
+
+  farmerId      String
+  farmer        Farmer         @relation(fields: [farmerId], references: [id])
+
+  centreId      String
+  centre        Centre         @relation(fields: [centreId], references: [id])
+
+  produceType   ProduceType
+  grade         Grade
+
+  grossWeightKg Decimal        @db.Decimal(10, 3)
+  tareWeightKg  Decimal        @db.Decimal(10, 3)
+  netWeightKg   Decimal        @db.Decimal(10, 3) // grossWeightKg - tareWeightKg, must be > 0
+
+  // Hard link to the exact price list this delivery was priced against.
+  // This is what makes the "never retroactively repriced" rule enforceable
+  // at the data layer, not just in application logic.
+  priceListId   String
+  priceList     PriceList      @relation(fields: [priceListId], references: [id])
+  pricePerKgRwf Int            // copied from the matched PriceListEntry at record time
+  amountRwf     Int            // netWeightKg * pricePerKgRwf, rounded to nearest whole RWF
+
+  deliveryDate  DateTime       @db.Date
+  status        DeliveryStatus @default(RECORDED)
+
+  recordedById  String
+  recordedBy    User           @relation("RecordedBy", fields: [recordedById], references: [id])
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  auditEntries  AuditLogEntry[]
+
+  @@index([centreId])
+  @@index([farmerId])
+  @@index([status])
+  @@index([produceType])
+  @@index([deliveryDate])
+  @@index([centreId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Audit log — append-only record of every status transition
+// ---------------------------------------------------------------------------
+
+model AuditLogEntry {
+  id           String         @id @default(uuid())
+  deliveryId   String
+  delivery     Delivery       @relation(fields: [deliveryId], references: [id])
+
+  fromStatus   DeliveryStatus?
+  toStatus     DeliveryStatus
+
+  performedById String
+  performedBy   User          @relation("PerformedBy", fields: [performedById], references: [id])
+
+  comment      String?
+  createdAt    DateTime       @default(now())
+
+  @@index([deliveryId])
+}
